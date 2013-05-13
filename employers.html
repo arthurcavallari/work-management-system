@@ -1,0 +1,67 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Employers | Work Management System</title>
+<link href="css/styles.css" rel="stylesheet" type="text/css">
+<script type="text/javascript" src="js/util.js"></script>
+<!--[if lt IE 9]>
+<script src="http://html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+<![endif]-->
+<link href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8/themes/base/jquery-ui.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js"></script>
+<script src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8/jquery-ui.min.js"></script>
+</head>
+
+<body>
+
+<div class="container">
+  <header>
+    <div class="header_text">
+        <h1><a href="#">Work Management System</a></h1>
+        <!--<h3>Employers</h3>-->
+    </div>
+  <div class="sidebar1"> 
+    <nav>
+      <ul>
+        <li><a href="?page=home">Home</a></li>
+        <li><a href="?page=employers" class="active_link">Employers</a>
+            <ul>
+            	<li><a href="?page=employers&task=view">View</a></li>
+                <li><a href="?page=employers&task=add">Add</a></li>
+            </ul>
+        </li>
+        <li><a href="?page=workedhours">Worked Hours</a>
+            <ul>
+            	<li><a href="?page=workedhours&task=view">View</a></li>
+                <li><a href="?page=workedhours&task=add">Add</a></li>
+            </ul>
+        </li>
+        <li><a href="?page=payments">Payments</a>
+            <ul>
+            	<li><a href="?page=payments&task=view">View</a></li>
+                <li><a href="?page=payments&task=add">Add</a></li>
+            </ul>
+        </li>
+      </ul>     
+    </nav>
+  </div> <!-- end .sidebar1 -->   
+  </header>
+  
+  
+  <article class="content">
+  			<section>	
+			 <h2>Employers</h2>
+			  <p>This is where you can manage your current employers.</p>
+			  <ul>
+			  <li><a href="?page=employers&task=view">View Current Employers</a></li>
+			  <li><a href="?page=employers&task=add">Add New Employer</a></li>
+			  </ul>
+			</section>
+			    </article>
+  <footer>
+    <p>Work Management System - Copyright © 2013. All rights reserved. </p>
+  </footer>
+  <!-- end .container --></div>
+</body>
+</html>

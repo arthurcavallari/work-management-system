@@ -209,6 +209,13 @@
                 
                         return isValid;
                     }
+					
+					function updateAmount(value)
+					{
+						value = value.substring(value.indexOf("(") + 2, value.indexOf(")"));
+						paymentsForm.grossamount.value = value;
+						paymentsForm.deductedamount.value = "0.00";
+					}
                     
                     function updateRefIds(index)
                     {
@@ -225,11 +232,13 @@
 						$("#Work_Reference_id option").each(function() {
 							var id = $(this).text().split("/");
 							
-							if (id[1] != (index) && $(this).value != "-1")  {                   
-								$(this).hide();
+							if (typeof(id[1]) != "undefined") {
+								if(id[1].substring(0, id[1].indexOf(" ")) != (index) && $(this).value != "-1")  {                   
+									$(this).hide();
+								}
+								else
+									$(this).show();
 							}
-							else
-								$(this).show();
 					
 						});
 						
@@ -286,7 +295,7 @@
 					<select name="Work_Reference_id" id="Work_Reference_id" style="min-width:206px; max-width:206px;">
 						<option value="-1" selected="selected">(Select a Reference Id)</option>
 					<?php foreach ($workedHours->listReferenceIds() as $str)	{ ?>
-                     	<option value="<? echo $str[1]; ?>"><? echo $str[1]; ?></option><?  } ?>
+                        <option onclick="updateAmount(this.innerHTML);" value="<? echo $str[1]; ?>"><? echo $str[1]; ?> ($<? echo number_format($str[2], 2, '.', ''); ?>)</option><?  } ?>
 					</select> 
 					<div class="spacer"></div>
 					
@@ -336,6 +345,13 @@
 					"VALUES ('$employerId', '$processedDate', '$Work_Reference_id', '$grossamount', '$deductedamount', '$Centrelink_Reported')";
 					
 					$sqlQuery = implode(" ", array($sqlInsertQuery, $sqlValues));
+					
+					$sqlUpdateQuery = "update work w set w.Paid = 'Y' where w.Reference_id = '$Work_Reference_id'";
+							if (!$mysqli->query($sqlUpdateQuery, MYSQLI_USE_RESULT)) 
+							{
+								echo "<p>Error message: " . $mysqli->error . "<br>$sqlUpdateQuery</p>";
+							}
+							echo $sqlUpdateQuery;
 					
 					$resultCount = $mysqli->query($sqlQuery, MYSQLI_USE_RESULT);
 					
@@ -592,6 +608,8 @@
 							$sqlEditWhere = "where `id` = '$id'";
 							
 							$sqlQuery = implode(" ", array($sqlEditQuery, $sqlEditWhere));
+							
+													
 							
 							$resultCount = $mysqli->query($sqlQuery, MYSQLI_USE_RESULT);
 						?>

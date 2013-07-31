@@ -17,57 +17,67 @@
 			</section>
 			<?php 
 		}
+		
+		function buildquery(&$currentFilter, $filterToAdd)
+		{
+			if($currentFilter == "")
+			{
+				$currentFilter = $filterToAdd;
+			}
+			else
+			{
+				$currentFilter .= " and " . $filterToAdd;
+			}
+		}
+
+		function calculateXWeeksIncome($numberOfWeeks = 8)
+		{
+			global $mysqli;
+			$centrelink = ($numberOfWeeks / 2) * 268.2;
+			$sqlSelect = "select sum(w.Hours_Worked * w.Hourly_Rate) + ($centrelink) as Total";
+			$sqlFrom = "from work w left join employers e on w.Employer_id=e.id";
+			$sqlWhere = "where Date_Worked >= '" . date('Y-m-d', strtotime('-' . ($numberOfWeeks * 7) . ' days')) . "' and Date_Worked <= '" . date('Y-m-d') . "'";		
+			$sqlOrderBy = "order by Date_Worked desc, Time_Start desc";
+			$sqlLimit = "";
+			$sqlGroupBy = "";
+			$sqlQuery = implode(" ", array($sqlSelect, $sqlFrom, $sqlWhere, $sqlGroupBy, $sqlOrderBy, $sqlLimit));
+
+			$result = $mysqli->query($sqlQuery, MYSQLI_USE_RESULT);
+			$row = mysqli_fetch_array($result);
+			return "$" . number_format($row['Total'], 2, '.', '');;
+		}
+		
 		function view()
 		{
 			// Start view
 			global $mysqli, $current_page;
-		
-			$employer1 = @$_REQUEST['employer1'];
-//			$employerComparisonMethod = @$_REQUEST['employerComparisonMethod'];				// ==, !=, contains
 			
-			$Date_WorkedValue1 = @$_REQUEST['Date_Worked1'];
-			$Date_WorkedValue2 = @$_REQUEST['Date_Worked2'];
-			$Date_WorkedComparisonMethod = @$_REQUEST['Date_WorkedComparisonMethod']; 		// any
-			
-			$startTimeValue1 = @$_REQUEST['startTime1'];
-			$startTimeValue2 = @$_REQUEST['startTime2'];
-			$startTimeComparisonMethod = @$_REQUEST['startTimeComparisonMethod']; 			// any
-			
-			$endTimeValue1 = @$_REQUEST['endTime1'];
-			$endTimeValue2 = @$_REQUEST['endTime2'];
-			$endTimeComparisonMethod = @$_REQUEST['endTimeComparisonMethod'];				// any
-			
-			$hoursWorkedValue1 = @$_REQUEST['hoursWorked1'];
-			$hoursWorkedValue2 = @$_REQUEST['hoursWorked2'];
-			$hoursWorkedComparisonMethod = @$_REQUEST['hoursWorkedComparisonMethod']; 		// any
-			
-			$hoursDeductedValue1 = @$_REQUEST['hoursDeducted1'];
-			$hoursDeductedValue2 = @$_REQUEST['hoursDeducted2'];
-			$hoursDeductedComparisonMethod = @$_REQUEST['hoursDeductedComparisonMethod']; 	// any
-			
-			$paidValue1 = @$_REQUEST['paid1'];
-//			$paidComparisonMethod = @$_REQUEST['paidComparisonMethod']; 					// ==, !=
-			
-			$rateValue1 = @$_REQUEST['rate1'];
-			$rateValue2 = @$_REQUEST['rate2'];
-			$rateComparisonMethod = @$_REQUEST['rateComparisonMethod']; 					// any
-			
-			$notes1 = @$_REQUEST['notes1'];
-			$notesComparisonMethod = @$_REQUEST['notesComparisonMethod'];					// ==, !=, contains
-			
-			$refId1 = @$_REQUEST['refId1'];
-			$refIdComparisonMethod = @$_REQUEST['refIdComparisonMethod'];					// ==, !=, contains
-			
+			$clearFilter = @$_REQUEST["clearFilter"];
+			if(isset($clearFilter))
+			{
+				foreach($_SESSION as $k => $v) 
+				{
+					if(strstr($k, "w_"))
+					{
+						$_SESSION[$k] = NULL;	
+					}
+				}
+				
+			}
+				
 			// Possible comparison methods: 
-			//   x         >      y 
-			//   x         >=     y
-			//   x         <      y 
-			//   x         <=     y 
-			//   field     ==     x
-			//   field     !=     x
-			//   field  contains  x
-	
+			//   field		>				x
+			//   field		>=				x
+			//   field		<				x
+			//   field		<=				x
+			//   field		==				x
+			//   field		!= 				x
+			//   field		contains		x
+			//   field		between_in		x and y
+			//   field		between_ex		x and y
+			$filterField = "";			
 			
+			WorkedHours::filter($filterField);
 			
 			// TODO: add range filters for each column
 			// for each field, if comparisonMethod is "==, !=, contains", check if isset(field1) 
@@ -75,13 +85,13 @@
 			
 			$sqlSelect = "select w.*, e.Name";
 			$sqlFrom = "from work w left join employers e on w.Employer_id=e.id";
-			if(isset($filterField, $filterValue))
+			if($filterField != "")
 			{
 				$sqlWhere = "where $filterField";	
 			}
 			else
 			{
-				$sqlWhere = ""; //where Date_Worked >= '2013-04-18' and Date_Worked <= '2013-05-01'";	
+				$sqlWhere = ""; //where Date_Worked >= '2013-05-16' and Date_Worked <= '2013-05-29'";	
 			}		
 			$sqlOrderBy = "order by Date_Worked desc, Time_Start desc";
 			$sqlLimit = "";
@@ -107,9 +117,69 @@
 			
 			$sqlLimit = "limit " . $startItem . ", 12";
 			$sqlQuery = implode(" ", array($sqlSelect, $sqlFrom, $sqlWhere, $sqlGroupBy, $sqlOrderBy, $sqlLimit));
-			echo $sqlQuery;
+			//echo $sqlQuery . "<br />";
 			//$data .= "Listing ".$totalItems." items<br /><br />";
-			?>	<center><h3><?php
+			?>
+            <table>
+            	<tr>
+            		<td><center>Income earned:</center>
+                        <table class='box-table-class'>
+                        <thead>
+                            <tr>
+                                <th>&nbsp;</th>
+                                <th>8 weeks</th>
+                                <th>4 weeks</th>
+                                <th>2 weeks</th>                    
+                                <th>&nbsp;</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>&nbsp;</td>
+                                <td><?php echo WorkedHours::calculateXWeeksIncome(8); ?></td>
+                                <td><?php echo WorkedHours::calculateXWeeksIncome(4); ?></td>
+                                <td><?php echo WorkedHours::calculateXWeeksIncome(2); ?></td>
+                                <td>&nbsp;</td>
+                            </tr>
+                        </tbody>
+                        </table>
+                    </td>
+                    <td>
+                    	<center>Next Reporting date:</center>
+                        <?php
+						
+							$nextDate = strtotime('+2 weeks', mktime(0,0,0,6,12,2013));
+
+							$now = mktime(0,0,0);
+							//echo "next: " . date('d/m/Y', $nextDate) . " <br /> now: " . date('d/m/Y', $now) . "<br />";
+							while($nextDate <= $now)
+							{
+								$nextDate = strtotime('+2 weeks', $nextDate);
+								//echo "next: " . date('d/m/Y', $nextDate) . " <br />";
+							}
+							$today = $nextDate;
+
+							 
+							echo date('d/m/Y', $today); // . "<br>" . $initialDate . "<br />";
+							//echo $diff;
+						?>
+                        <br /><br />
+                        <center>Last Reporting date:</center>
+                        <?php
+							$today = strtotime('-2 weeks', $nextDate);
+							 
+							echo date('d/m/Y', $today); 
+
+						?>
+                        
+                    </td>
+                </tr>
+            </table>
+            
+            
+            
+            
+            	<center><h3><?php
 			if ($navigation->noOfPages > 1) 
 			{
 				 
@@ -152,41 +222,68 @@
 			*/
 			
 			?>
-        
-		<table width='100%' id='box-table-a'>
+        <script type="text/javascript">
+		
+		$(document).ready(function() {
+			$("#Date_Worked1").datepicker();
+			$("#Date_Worked2").datepicker();
+			
+			
+			$('select[class="smallSelect"]').change(function(e) {
+                var targetId = (e.target.name.replace("ComparisonMethod", "")) + "2";
+			    if($(this).attr("value").indexOf("between",0) > -1)
+				{	
+					$("input#" + targetId).css("display", "block");
+				}
+				else
+				{
+					$("input#" + targetId).css("display", "none");
+				}
+            });
+			
+			$("#resetFilter").click(function(e) {
+                $("#filterForm input").prop("value", "");
+				$("#filterForm select").prop("selectedIndex", "0");
+            });
+			
+			$('select[class="smallSelect"]').change(); // calls the change method for all the ComparisonMethod selects to do the first update on on input boxes
+        });
+				  
+		</script>
+		<table id='box-table-a'>
 			<thead>
 				<tr>
-					<th width='20%'>
+					<th width='100px'>
 						Employer
 					</th>
-					<th width='6%'>
+					<th width='20px'>
 						Date
 					</th>
-					<th width='8%'>
+					<th width='50px'>
 						Start Time
 					</th>
-					<th width='8%'>
+					<th width='50px'>
 						End Time
 					</th>
-					<th width='9%'>
+					<th width='75px'>
 						Hours Worked
 					</th>
-					<th width='10%'>
+					<th width='85px'>
 						Deducted Hours
 					</th>
-					<th width='1%'>
+					<th width='10px'>
 						Paid
 					</th>
-					<th width='5%'>
+					<th width='10px'>
 						Rate
 					</th>
-					<th width='15%'>
+					<th width='100px'>
 						Notes
 					</th>
-					<th width='10%'>
+					<th width='95px'>
 						Ref. ID
 					</th>
-					<th width='8%'>
+					<th width='80px'>
 						Actions
 					</th>
 				</tr>
@@ -228,124 +325,124 @@
         <h1>Filter Options</h1>
 		<p></p>
 		<form id="filterForm" action="?page=workedhours&task=view&p=<?php echo $startItem; ?>" method="post" name="filterForm">
-            <div style="float:left;">
+            <div style="float:left; width:440px;">
             <!--
-            //   x         >      y 
-			//   x         >=     y
-			//   x         <      y 
-			//   x         <=     y 
-			//   field     ==     x
-			//   field     !=     x
-			//   field  contains  x
-            -->
+            //   field         	>      			x
+			//   field         	>=     			x
+			//   field         	<      			x
+			//   field         	<=     			x
+			//   field     		=      			x
+			//   field     		!=     			x
+			//   field  		contains  		x
+            //	 field  		between_in  	x and y
+            //	 field  		between_ex  	x and y
+            -->            
                 <label>Employer</label>
                 <select name="employer1" id="employer1" >
-						<option value="-1" selected="selected">(Select an employer)</option>
-					<?php $employers = new Employers(); foreach ($employers->listEmployers() as $str)	{ ?>
-                     	<option value="<? echo $str[0]; ?>"><? echo $str[1]; ?></option><?  } ?>
+						<option value="-1" <?php if(@$_SESSION['w_employer1'] == "-1"){echo 'selected="selected"'; } ?>>(Select an employer)</option>
+<?php $employers = new Employers(); foreach ($employers->listEmployers() as $str)	{ ?>                     	<option value="<? echo $str[0]; ?>" <?php if(@$_SESSION['w_employer1'] == $str[0]){echo 'selected="selected"'; } ?>><? echo $str[1]; ?></option>
+<?  } ?>
 				</select>
                 <div class="spacer"></div>
                 <label>Start Time</label>
                 <select name="startTimeComparisonMethod" class="smallSelect" >
-                    <option value="==">==</option>
-                    <option value="!=">!=</option>
-                    <option value=">">&gt;</option>
-                    <option value=">=">&gt;=</option>
-                    <option value="<">&lt;</option>
-                    <option value="<=">&lt;=</option>
-                    <option value="contains">contains</option>
+                    <option value="="  <?php if(@$_SESSION['w_startTimeComparisonMethod'] == "=" ){echo 'selected="selected"'; } ?>>==</option>
+                    <option value="!=" <?php if(@$_SESSION['w_startTimeComparisonMethod'] == "!="){echo 'selected="selected"'; } ?>>!=</option>
+                    <option value=">"  <?php if(@$_SESSION['w_startTimeComparisonMethod'] == ">" ){echo 'selected="selected"'; } ?>>&gt;</option>
+                    <option value=">=" <?php if(@$_SESSION['w_startTimeComparisonMethod'] == ">="){echo 'selected="selected"'; } ?>>&gt;=</option>
+                    <option value="<"  <?php if(@$_SESSION['w_startTimeComparisonMethod'] == "<" ){echo 'selected="selected"'; } ?>>&lt;</option>
+                    <option value="<=" <?php if(@$_SESSION['w_startTimeComparisonMethod'] == "<="){echo 'selected="selected"'; } ?>>&lt;=</option>
                 </select>
-                <input type="text" name="startTime1" />
-                <input type="text" name="startTime2" />
+                <input type="text" name="startTime1" id="startTime1" value="<?php echo @$_SESSION['w_startTime1']; ?>" />
+                <input type="text" name="startTime2" id="startTime2" value="<?php echo @$_SESSION['w_startTime2']; ?>" style="display:none;" />
               <div class="spacer"></div>
                 <label>End Time</label>
                 <select name="endTimeComparisonMethod" class="smallSelect">
-                    <option value="==">==</option>
-                    <option value="!=">!=</option>
-                    <option value=">">&gt;</option>
-                    <option value=">=">&gt;=</option>
-                    <option value="<">&lt;</option>
-                    <option value="<=">&lt;=</option>
-                    <option value="contains">contains</option>
+                    <option value="="  <?php if(@$_SESSION['w_endTimeComparisonMethod'] == "=" ){echo 'selected="selected"'; } ?>>==</option>
+                    <option value="!=" <?php if(@$_SESSION['w_endTimeComparisonMethod'] == "!="){echo 'selected="selected"'; } ?>>!=</option>
+                    <option value=">"  <?php if(@$_SESSION['w_endTimeComparisonMethod'] == ">" ){echo 'selected="selected"'; } ?>>&gt;</option>
+                    <option value=">=" <?php if(@$_SESSION['w_endTimeComparisonMethod'] == ">="){echo 'selected="selected"'; } ?>>&gt;=</option>
+                    <option value="<"  <?php if(@$_SESSION['w_endTimeComparisonMethod'] == "<" ){echo 'selected="selected"'; } ?>>&lt;</option>
+                    <option value="<=" <?php if(@$_SESSION['w_endTimeComparisonMethod'] == "<="){echo 'selected="selected"'; } ?>>&lt;=</option>
                 </select>
-                <input type="text" name="endTime1" />
-                <input type="text" name="endTime2" />
+                <input type="text" name="endTime1" id="endTime1" value="<?php echo @$_SESSION['w_endTime1']; ?>" />
+                <input type="text" name="endTime2" id="endTime2" value="<?php echo @$_SESSION['w_endTime2']; ?>" style="display:none;" />
                 <div class="spacer"></div>
                 <label>Hours Worked</label>             
                 <select name="hoursWorkedComparisonMethod" class="smallSelect">
-                    <option value="==">==</option>
-                    <option value="!=">!=</option>
-                    <option value=">">&gt;</option>
-                    <option value=">=">&gt;=</option>
-                    <option value="<">&lt;</option>
-                    <option value="<=">&lt;=</option>
-                    <option value="contains">contains</option>
+                    <option value="="  <?php if(@$_SESSION['w_hoursWorkedComparisonMethod'] == "=" ){echo 'selected="selected"'; } ?>>==</option>
+                    <option value="!=" <?php if(@$_SESSION['w_hoursWorkedComparisonMethod'] == "!="){echo 'selected="selected"'; } ?>>!=</option>
+                    <option value=">"  <?php if(@$_SESSION['w_hoursWorkedComparisonMethod'] == ">" ){echo 'selected="selected"'; } ?>>&gt;</option>
+                    <option value=">=" <?php if(@$_SESSION['w_hoursWorkedComparisonMethod'] == ">="){echo 'selected="selected"'; } ?>>&gt;=</option>
+                    <option value="<"  <?php if(@$_SESSION['w_hoursWorkedComparisonMethod'] == "<" ){echo 'selected="selected"'; } ?>>&lt;</option>
+                    <option value="<=" <?php if(@$_SESSION['w_hoursWorkedComparisonMethod'] == "<="){echo 'selected="selected"'; } ?>>&lt;=</option>
                 </select>
-                <input type="text" name="hoursWorked1" />
-                <input type="text" name="hoursWorked2" />
+                <input type="text" name="hoursWorked1" id="hoursWorked1" value="<?php echo @$_SESSION['w_hoursWorked1']; ?>" />
+                <input type="text" name="hoursWorked2" id="hoursWorked2" value="<?php echo @$_SESSION['w_hoursWorked2']; ?>" style="display:none;" />
                 <div class="spacer"></div>
                 <label>Hours Deducted</label>
                 <select name="hoursDeductedComparisonMethod" class="smallSelect">
-                    <option value="==">==</option>
-                    <option value="!=">!=</option>
-                    <option value=">">&gt;</option>
-                    <option value=">=">&gt;=</option>
-                    <option value="<">&lt;</option>
-                    <option value="<=">&lt;=</option>
-                    <option value="contains">contains</option>
+                    <option value="="  <?php if(@$_SESSION['w_hoursDeductedComparisonMethod'] == "=" ){echo 'selected="selected"'; } ?>>==</option>
+                    <option value="!=" <?php if(@$_SESSION['w_hoursDeductedComparisonMethod'] == "!="){echo 'selected="selected"'; } ?>>!=</option>
+                    <option value=">"  <?php if(@$_SESSION['w_hoursDeductedComparisonMethod'] == ">" ){echo 'selected="selected"'; } ?>>&gt;</option>
+                    <option value=">=" <?php if(@$_SESSION['w_hoursDeductedComparisonMethod'] == ">="){echo 'selected="selected"'; } ?>>&gt;=</option>
+                    <option value="<"  <?php if(@$_SESSION['w_hoursDeductedComparisonMethod'] == "<" ){echo 'selected="selected"'; } ?>>&lt;</option>
+                    <option value="<=" <?php if(@$_SESSION['w_hoursDeductedComparisonMethod'] == "<="){echo 'selected="selected"'; } ?>>&lt;=</option>
                 </select>
-                <input type="text" name="hoursDeducted1" />
-                <input type="text" name="hoursDeducted2" />
+                <input type="text" name="hoursDeducted1" id="hoursDeducted1" value="<?php echo @$_SESSION['w_hoursDeducted1']; ?>" />
+                <input type="text" name="hoursDeducted2" id="hoursDeducted2" value="<?php echo @$_SESSION['w_hoursDeducted2']; ?>" style="display:none;" />
                 <div class="spacer"></div>
             </div>
-            <div style="float:right;">                
+            <div style="float:right; width:440px;">                
                 <label>Paid</label>
                 <select name="paid1" >
-                    <option value="-1" selected="selected">(Select a value)</option>
-                    <option value="Y">Yes</option>
-                    <option value="N">No</option>
+                    <option value="-1" <?php if(@$_SESSION['w_paid1'] == "-1"){echo 'selected="selected"'; } ?>>(Select a value)</option>
+                    <option value="Y" <?php if(@$_SESSION['w_paid1'] == "Y"){echo 'selected="selected"'; } ?>>Yes</option>
+                    <option value="N" <?php if(@$_SESSION['w_paid1'] == "N"){echo 'selected="selected"'; } ?>>No</option>
                 </select>
                 <div class="spacer"></div>
                 <label>Date Worked</label>
                 <select name="Date_WorkedComparisonMethod" class="smallSelect">
-                    <option value="==">==</option>
-                    <option value="!=">!=</option>
-                    <option value=">">&gt;</option>
-                    <option value=">=">&gt;=</option>
-                    <option value="<">&lt;</option>
-                    <option value="<=">&lt;=</option>
-                    <option value="contains">contains</option>
+                    <option value="="  <?php if(@$_SESSION['w_Date_WorkedComparisonMethod'] == "=" ){echo 'selected="selected"'; } ?>>==</option>
+                    <option value="!=" <?php if(@$_SESSION['w_Date_WorkedComparisonMethod'] == "!="){echo 'selected="selected"'; } ?>>!=</option>
+                    <option value=">"  <?php if(@$_SESSION['w_Date_WorkedComparisonMethod'] == ">" ){echo 'selected="selected"'; } ?>>&gt;</option>
+                    <option value=">=" <?php if(@$_SESSION['w_Date_WorkedComparisonMethod'] == ">="){echo 'selected="selected"'; } ?>>&gt;=</option>
+                    <option value="<"  <?php if(@$_SESSION['w_Date_WorkedComparisonMethod'] == "<" ){echo 'selected="selected"'; } ?>>&lt;</option>
+                    <option value="<=" <?php if(@$_SESSION['w_Date_WorkedComparisonMethod'] == "<="){echo 'selected="selected"'; } ?>>&lt;=</option>
+                    <option value="contains" <?php if(@$_SESSION['w_Date_WorkedComparisonMethod'] == "contains"){echo 'selected="selected"'; } ?>>contains</option>
+					<option value="between_in" <?php if(@$_SESSION['w_Date_WorkedComparisonMethod'] == "between_in"){echo 'selected="selected"'; } ?>>between inclusive</option>
+					<option value="between_ex" <?php if(@$_SESSION['w_Date_WorkedComparisonMethod'] == "between_ex"){echo 'selected="selected"'; } ?>>between exclusive</option>
                 </select>
-                <input type="text" name="Date_Worked1" />
-                <input type="text" name="Date_Worked2" />
+                <input type="text" name="Date_Worked1" id="Date_Worked1" value="<?php echo @$_SESSION['w_Date_Worked1']; ?>" />
+                <input type="text" name="Date_Worked2" id="Date_Worked2" value="<?php echo @$_SESSION['w_Date_Worked2']; ?>" style="display:none;" />
                 <div class="spacer"></div>                
                 <label>Rate</label>
                 <select name="rateComparisonMethod" class="smallSelect">
-                    <option value="==">==</option>
-                    <option value="!=">!=</option>
-                    <option value=">">&gt;</option>
-                    <option value=">=">&gt;=</option>
-                    <option value="<">&lt;</option>
-                    <option value="<=">&lt;=</option>
+                    <option value="="  <?php if(@$_SESSION['w_rateComparisonMethod'] == "=" ){echo 'selected="selected"'; } ?>>==</option>
+                    <option value="!=" <?php if(@$_SESSION['w_rateComparisonMethod'] == "!="){echo 'selected="selected"'; } ?>>!=</option>
+                    <option value=">"  <?php if(@$_SESSION['w_rateComparisonMethod'] == ">" ){echo 'selected="selected"'; } ?>>&gt;</option>
+                    <option value=">=" <?php if(@$_SESSION['w_rateComparisonMethod'] == ">="){echo 'selected="selected"'; } ?>>&gt;=</option>
+                    <option value="<"  <?php if(@$_SESSION['w_rateComparisonMethod'] == "<" ){echo 'selected="selected"'; } ?>>&lt;</option>
+                    <option value="<=" <?php if(@$_SESSION['w_rateComparisonMethod'] == "<="){echo 'selected="selected"'; } ?>>&lt;=</option>
                 </select>
-                <input type="text" name="rate1" />
-                <input type="text" name="rate2" /> 
+                <input type="text" name="rate1" id="rate1" value="<?php echo @$_SESSION['w_rate1']; ?>" />
+                <input type="text" name="rate2" id="rate2" value="<?php echo @$_SESSION['w_rate2']; ?>" style="display:none;" /> 
                 <div class="spacer"></div>
                 <label>Notes</label>
                 <select name="notesComparisonMethod" class="smallSelect">
-                    <option value="==">==</option>
-                    <option value="!=">!=</option>
-                    <option value="contains">contains</option>
+                    <option value="="  <?php if(@$_SESSION['w_notesComparisonMethod'] == "=" ){echo 'selected="selected"'; } ?>>==</option>
+                    <option value="!=" <?php if(@$_SESSION['w_notesComparisonMethod'] == "!="){echo 'selected="selected"'; } ?>>!=</option>
+                    <option value="contains" <?php if(@$_SESSION['w_notesComparisonMethod'] == "contains"){echo 'selected="selected"'; } ?>>contains</option>
                 </select>
-                <input type="text" name="notes1" />
+                <input type="text" name="notes1" id="notes1" value="<?php echo @$_SESSION['w_notes1']; ?>" />
                 <div class="spacer"></div>
                 <label>Ref. ID</label>
                 <select name="refIdComparisonMethod" class="smallSelect">
-                    <option value="==">==</option>
-                    <option value="!=">!=</option>
-                    <option value="contains">contains</option>
+                    <option value="="  <?php if(@$_SESSION['w_refIdComparisonMethod'] == "=" ){echo 'selected="selected"'; } ?>>==</option>
+                    <option value="!=" <?php if(@$_SESSION['w_refIdComparisonMethod'] == "!="){echo 'selected="selected"'; } ?>>!=</option>
+                    <option value="contains" <?php if(@$_SESSION['w_refIdComparisonMethod'] == "contains"){echo 'selected="selected"'; } ?>>contains</option>
                 </select>
-                <input type="text" name="refId1" />
+                <input type="text" name="refId1" id="refId1" value="<?php echo @$_SESSION['w_refId1']; ?>" />
                 <div class="spacer"></div>
                 
             </div>
@@ -353,7 +450,7 @@
             
             
             <div style="text-align:center;">
-                <button type="submit" name="paymentsFormButton" class="submitButton">Submit</button> <button type="reset" class="resetButton">Reset</button>
+                <button type="submit" name="paymentsFormButton" class="submitButton">Submit</button> <button id="resetFilter" class="resetButton">Reset</button>
             </div>
             <div class="spacer"></div>
         </form>
@@ -378,7 +475,7 @@
 		function listReferenceIds($paid = 'N')
 		{
 			global $mysqli;
-			$sqlSelect = "select id, Reference_id";
+			$sqlSelect = "select id, Reference_id, sum(Hours_Worked * Hourly_Rate) as Amount";
 			$sqlFrom = "from work";
 			$sqlWhere = ($paid == 'N' ? "where Paid = '$paid'" : ""); //where Employer_id = '$Employer_id'";
 			$sqlGroupBy = "group by Reference_id";
@@ -397,7 +494,7 @@
 				$i = 0;
 				while ($row = mysqli_fetch_array($result)) 
 				{
-					$data[$i] = array($row['id'], $row['Reference_id']);
+					$data[$i] = array($row['id'], $row['Reference_id'], $row['Amount']);
 					++$i;
 				}
 				$result->close();
@@ -1071,6 +1168,365 @@
 			// Start delete
 			echo "Delete";
 			// End delete
+		}
+		
+		function filter(&$filterField)
+		{
+			$employer1 = @$_REQUEST['employer1'];
+			
+			$Date_WorkedValue1 = @$_REQUEST['Date_Worked1'];
+			$Date_WorkedValue2 = @$_REQUEST['Date_Worked2'];
+			$Date_WorkedComparisonMethod = @$_REQUEST['Date_WorkedComparisonMethod']; 		// any
+			
+			$startTimeValue1 = @$_REQUEST['startTime1'];
+			$startTimeValue2 = @$_REQUEST['startTime2'];
+			$startTimeComparisonMethod = @$_REQUEST['startTimeComparisonMethod']; 			// any
+			
+			$endTimeValue1 = @$_REQUEST['endTime1'];
+			$endTimeValue2 = @$_REQUEST['endTime2'];
+			$endTimeComparisonMethod = @$_REQUEST['endTimeComparisonMethod'];				// any
+			
+			$hoursWorkedValue1 = @$_REQUEST['hoursWorked1'];
+			$hoursWorkedValue2 = @$_REQUEST['hoursWorked2'];
+			$hoursWorkedComparisonMethod = @$_REQUEST['hoursWorkedComparisonMethod']; 		// any
+			
+			$hoursDeductedValue1 = @$_REQUEST['hoursDeducted1'];
+			$hoursDeductedValue2 = @$_REQUEST['hoursDeducted2'];
+			$hoursDeductedComparisonMethod = @$_REQUEST['hoursDeductedComparisonMethod']; 	// any
+			
+			$paidValue1 = @$_REQUEST['paid1'];
+			
+			$rateValue1 = @$_REQUEST['rate1'];
+			$rateValue2 = @$_REQUEST['rate2'];
+			$rateComparisonMethod = @$_REQUEST['rateComparisonMethod']; 					// any
+			
+			$notes1 = @$_REQUEST['notes1'];
+			$notesComparisonMethod = @$_REQUEST['notesComparisonMethod'];					// ==, !=, contains
+			
+			$refId1 = @$_REQUEST['refId1'];
+			$refIdComparisonMethod = @$_REQUEST['refIdComparisonMethod'];					// ==, !=, contains
+			
+			$singleFieldComparison = array('=', '!=', '>', '>=', '<', '<=');
+			$multiFieldComparison = array('between_in', 'between_ex');
+			
+			if((isset($employer1) && $employer1 != "-1")  ||  (isset($_SESSION['w_employer1']) && $_SESSION['w_employer1'] != "-1"))
+			{
+				if(isset($employer1))
+				{
+					$_SESSION['w_employer1'] = $employer1 = @$_REQUEST['employer1'];
+				}
+				$fieldValue1 = $_SESSION['w_employer1'];
+				if($fieldValue1 != "-1")
+					WorkedHours::buildquery($filterField, "w.Employer_id='$fieldValue1'");
+			}
+			if((isset($paidValue1) && $paidValue1 != "-1")  ||  (isset($_SESSION['w_paid1']) && $_SESSION['w_paid1'] != "-1"))
+			{
+				if(isset($paidValue1))
+				{
+					$_SESSION['w_paid1'] = $paidValue1 = @$_REQUEST['paid1'];
+				}
+				$fieldValue1 = $_SESSION['w_paid1'];
+				if($fieldValue1 != "-1")
+					WorkedHours::buildquery($filterField, "w.Paid='$fieldValue1'");
+			}
+			if((isset($Date_WorkedValue1) && $Date_WorkedValue1 != "")  ||  (isset($_SESSION['w_Date_Worked1']) && $_SESSION['w_Date_Worked1'] != "") )
+			{
+				$fieldName = "w.Date_Worked";
+				$c_operator = NULL;
+				$fieldValue1 = NULL;
+				$fieldValue2 = NULL; 
+				
+				if(isset($Date_WorkedValue1))
+				{
+					$fieldValue1 = $_SESSION['w_Date_Worked1'] = @$_REQUEST['Date_Worked1'];
+					$fieldValue2 = $_SESSION['w_Date_Worked2'] = @$_REQUEST['Date_Worked2'];
+					$c_operator = $_SESSION['w_Date_WorkedComparisonMethod'] = @$_REQUEST['Date_WorkedComparisonMethod'];
+				}
+				else
+				{
+					$fieldValue1 = $_SESSION['w_Date_Worked1'];
+					$fieldValue2 = $_SESSION['w_Date_Worked2'];
+					$c_operator = $_SESSION['w_Date_WorkedComparisonMethod'];
+				}
+				
+				
+				if($fieldValue1 != "")
+				{				
+					$fieldValue1 = date("Y-m-d", strtotime($fieldValue1));
+					$fieldValue2 = date("Y-m-d", strtotime($fieldValue2));
+					if(in_array($c_operator, $singleFieldComparison))
+					{					
+						WorkedHours::buildquery($filterField, "$fieldName $c_operator '$fieldValue1'");
+					}
+					elseif($c_operator == 'between_in')
+					{					
+						WorkedHours::buildquery($filterField, "$fieldName >= '$fieldValue1' and $fieldName <= '$fieldValue2'");
+					}
+					elseif($c_operator == 'between_ex')
+					{
+						WorkedHours::buildquery($filterField, "$fieldName > '$fieldValue1' and $fieldName < '$fieldValue2'");
+					}
+				}
+			}
+			
+			if((isset($startTimeValue1) && $startTimeValue1 != "")  ||  (isset($_SESSION['w_startTime1']) && $_SESSION['w_startTime1'] != "") )
+			{
+				$fieldName = "w.Time_Start";
+				$c_operator = NULL;
+				$fieldValue1 = NULL;
+				$fieldValue2 = NULL; 
+				
+				if(isset($startTimeValue1))
+				{
+					$fieldValue1 = $_SESSION['w_startTime1'] = @$_REQUEST['startTime1'];
+					$fieldValue2 = $_SESSION['w_startTime2'] = @$_REQUEST['startTime2'];
+					$c_operator = $_SESSION['w_startTimeComparisonMethod'] = @$_REQUEST['startTimeComparisonMethod'];
+				}
+				else
+				{
+					$fieldValue1 = $_SESSION['w_startTime1'];
+					$fieldValue2 = $_SESSION['w_startTime2'];
+					$c_operator = $_SESSION['w_startTimeComparisonMethod'];
+				}
+								
+				if($fieldValue1 != "")
+				{
+					if(in_array($c_operator, $singleFieldComparison))
+					{					
+						WorkedHours::buildquery($filterField, "$fieldName $c_operator '$fieldValue1'");
+					}
+					elseif($c_operator == 'between_in')
+					{					
+						WorkedHours::buildquery($filterField, "$fieldName >= '$fieldValue1' and $fieldName <= '$fieldValue2'");
+					}
+					elseif($c_operator == 'between_ex')
+					{
+						WorkedHours::buildquery($filterField, "$fieldName > '$fieldValue1' and $fieldName < '$fieldValue2'");
+					}	
+					else
+					{
+						echo  "$fieldName $c_operator '$fieldValue1'<br>";
+					}
+				}
+			}
+			
+			if((isset($endTimeValue1) && $endTimeValue1 != "")  ||  (isset($_SESSION['w_endTime1']) && $_SESSION['w_endTime1'] != "") )
+			{
+				$fieldName = "w.Time_End";
+				$c_operator = NULL;
+				$fieldValue1 = NULL;
+				$fieldValue2 = NULL; 
+				
+				if(isset($endTimeValue1))
+				{
+					$fieldValue1 = $_SESSION['w_endTime1'] = @$_REQUEST['endTime1'];
+					$fieldValue2 = $_SESSION['w_endTime2'] = @$_REQUEST['endTime2'];
+					$c_operator = $_SESSION['w_endTimeComparisonMethod'] = @$_REQUEST['endTimeComparisonMethod'];
+				}
+				else
+				{
+					$fieldValue1 = $_SESSION['w_endTime1'];
+					$fieldValue2 = $_SESSION['w_endTime2'];
+					$c_operator = $_SESSION['w_endTimeComparisonMethod'];
+				}
+				if($fieldValue1 != "")
+				{
+					if(in_array($c_operator, $singleFieldComparison))
+					{					
+						WorkedHours::buildquery($filterField, "$fieldName $c_operator '$fieldValue1'");
+					}
+					elseif($c_operator == 'between_in')
+					{					
+						WorkedHours::buildquery($filterField, "$fieldName >= '$fieldValue1' and $fieldName <= '$fieldValue2'");
+					}
+					elseif($c_operator == 'between_ex')
+					{
+						WorkedHours::buildquery($filterField, "$fieldName > '$fieldValue1' and $fieldName < '$fieldValue2'");
+					}	
+					else
+					{
+						echo  "$fieldName $c_operator '$fieldValue1'<br>";
+					}
+				}
+			}
+			
+			if((isset($hoursWorkedValue1) && $hoursWorkedValue1 != "")  ||  (isset($_SESSION['w_hoursWorked1']) && $_SESSION['w_hoursWorked1'] != "") )
+			{
+				$fieldName = "w.Hours_Worked";
+				$c_operator = NULL;
+				$fieldValue1 = NULL;
+				$fieldValue2 = NULL; 
+				
+				if(isset($hoursWorkedValue1))
+				{
+					$fieldValue1 = $_SESSION['w_hoursWorked1'] = @$_REQUEST['hoursWorked1'];
+					$fieldValue2 = $_SESSION['w_hoursWorked2'] = @$_REQUEST['hoursWorked2'];
+					$c_operator =  $_SESSION['w_hoursWorkedComparisonMethod'] = @$_REQUEST['hoursWorkedComparisonMethod'];
+				}
+				else
+				{
+					$fieldValue1 = $_SESSION['w_hoursWorked1'];
+					$fieldValue2 = $_SESSION['w_hoursWorked2'];
+					$c_operator = $_SESSION['w_hoursWorkedComparisonMethod'];
+				}
+				if($fieldValue1 != "")
+				{
+					if(in_array($c_operator, $singleFieldComparison))
+					{					
+						WorkedHours::buildquery($filterField, "$fieldName $c_operator '$fieldValue1'");
+					}
+					elseif($c_operator == 'between_in')
+					{					
+						WorkedHours::buildquery($filterField, "$fieldName >= '$fieldValue1' and $fieldName <= '$fieldValue2'");
+					}
+					elseif($c_operator == 'between_ex')
+					{
+						WorkedHours::buildquery($filterField, "$fieldName > '$fieldValue1' and $fieldName < '$fieldValue2'");
+					}	
+					else
+					{
+						echo  "$fieldName $c_operator '$fieldValue1'<br>";
+					}
+				}
+			}
+			
+			if((isset($hoursDeductedValue1) && $hoursDeductedValue1 != "")  ||  (isset($_SESSION['w_hoursDeducted1']) && $_SESSION['w_hoursDeducted1'] != "") )
+			{
+				$fieldName = "w.Deducted_Hours";
+				$c_operator = NULL;
+				$fieldValue1 = NULL;
+				$fieldValue2 = NULL; 
+				
+				if(isset($hoursWorkedValue1))
+				{
+					$fieldValue1 = $_SESSION['w_hoursDeducted1'] 				   = @$_REQUEST['hoursDeducted1'];
+					$fieldValue2 = $_SESSION['w_hoursDeducted2'] 				   = @$_REQUEST['hoursDeducted2'];
+					$c_operator  =  $_SESSION['w_hoursDeductedComparisonMethod'] = @$_REQUEST['hoursDeductedComparisonMethod'];
+				}
+				else
+				{
+					$fieldValue1 = $_SESSION['w_hoursDeducted1'];
+					$fieldValue2 = $_SESSION['w_hoursDeducted2'];
+					$c_operator  = $_SESSION['w_hoursDeductedComparisonMethod'];
+				}
+				if($fieldValue1 != "")
+				{
+					if(in_array($c_operator, $singleFieldComparison))
+					{					
+						WorkedHours::buildquery($filterField, "$fieldName $c_operator '$fieldValue1'");
+					}
+					elseif($c_operator == 'between_in')
+					{					
+						WorkedHours::buildquery($filterField, "$fieldName >= '$fieldValue1' and $fieldName <= '$fieldValue2'");
+					}
+					elseif($c_operator == 'between_ex')
+					{
+						WorkedHours::buildquery($filterField, "$fieldName > '$fieldValue1' and $fieldName < '$fieldValue2'");
+					}	
+					else
+					{
+						echo  "$fieldName $c_operator '$fieldValue1'<br>";
+					}
+				}
+			}
+			
+			if((isset($hoursDeductedValue1) && $hoursDeductedValue1 != "")  ||  (isset($_SESSION['w_rate1']) && $_SESSION['w_rate1'] != "") )
+			{
+				$fieldName = "w.Hourly_Rate";
+				$c_operator = NULL;
+				$fieldValue1 = NULL;
+				$fieldValue2 = NULL; 
+				
+				if(isset($hoursWorkedValue1))
+				{
+					$fieldValue1 = $_SESSION['w_rate1'] 				   = @$_REQUEST['rate1'];
+					$fieldValue2 = $_SESSION['w_rate2'] 				   = @$_REQUEST['rate2'];
+					$c_operator  = $_SESSION['w_rateComparisonMethod']   = @$_REQUEST['rateComparisonMethod'];
+				}
+				else
+				{
+					$fieldValue1 = $_SESSION['w_rate1'];
+					$fieldValue2 = $_SESSION['w_rate2'];
+					$c_operator  = $_SESSION['w_rateComparisonMethod'];
+				}
+				if($fieldValue1 != "")
+				{
+					if(in_array($c_operator, $singleFieldComparison))
+					{					
+						WorkedHours::buildquery($filterField, "$fieldName $c_operator '$fieldValue1'");
+					}
+					elseif($c_operator == 'between_in')
+					{					
+						WorkedHours::buildquery($filterField, "$fieldName >= '$fieldValue1' and $fieldName <= '$fieldValue2'");
+					}
+					elseif($c_operator == 'between_ex')
+					{
+						WorkedHours::buildquery($filterField, "$fieldName > '$fieldValue1' and $fieldName < '$fieldValue2'");
+					}	
+					else
+					{
+						echo  "$fieldName $c_operator '$fieldValue1'<br>";
+					}
+				}
+			}
+			
+			if((isset($refId1) && $refId1 != "")  ||  (isset($_SESSION['w_refId1']) && $_SESSION['w_refId1'] != "") )
+			{
+				$fieldName = "w.Reference_id";
+				$c_operator = NULL;
+				$fieldValue1 = NULL;
+				
+				if(isset($hoursWorkedValue1))
+				{
+					$fieldValue1 = $_SESSION['w_refId1'] 				   = @$_REQUEST['refId1'];
+					$c_operator  = $_SESSION['w_refIdComparisonMethod']  = @$_REQUEST['refIdComparisonMethod'];
+				}
+				else
+				{
+					$fieldValue1 = $_SESSION['w_refId1'];
+					$c_operator  = $_SESSION['w_refIdComparisonMethod'];
+				}
+				if($fieldValue1 != "")
+				{
+					if(in_array($c_operator, $singleFieldComparison))
+					{					
+						WorkedHours::buildquery($filterField, "$fieldName $c_operator '$fieldValue1'");
+					}
+					elseif($c_operator == 'contains')
+					{
+						WorkedHours::buildquery($filterField, "$fieldName LIKE '%$fieldValue1%'");
+					}
+				}
+			}
+			
+			if((isset($notes1) && $notes1 != "")  ||  (isset($_SESSION['w_notes1']) && $_SESSION['w_notes1'] != "") )
+			{
+				$fieldName = "w.Notes";
+				$c_operator = NULL;
+				$fieldValue1 = NULL;
+				
+				if(isset($hoursWorkedValue1))
+				{
+					$fieldValue1 = $_SESSION['w_notes1'] 				   = @$_REQUEST['notes1'];
+					$c_operator  = $_SESSION['w_notesComparisonMethod']  = @$_REQUEST['notesComparisonMethod'];
+				}
+				else
+				{
+					$fieldValue1 = $_SESSION['w_notes1'];
+					$c_operator  = $_SESSION['w_notesComparisonMethod'];
+				}
+				if($fieldValue1 != "")
+				{
+					if(in_array($c_operator, $singleFieldComparison))
+					{					
+						WorkedHours::buildquery($filterField, "$fieldName $c_operator '$fieldValue1'");
+					}
+					elseif($c_operator == 'contains')
+					{
+						WorkedHours::buildquery($filterField, "$fieldName LIKE '%$fieldValue1%'");
+					}
+				}
+			}	
 		}
 	}
 ?>

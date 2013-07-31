@@ -1,5 +1,6 @@
 <?php
-
+	ob_start();
+	session_start();
 	include('functions.php');
 	
 	$page_request = @$_REQUEST['page'];
@@ -66,9 +67,9 @@
 <!--[if lt IE 9]>
 <script src="http://html5shiv.googlecode.com/svn/trunk/html5.js"></script>
 <![endif]-->
-<link href="css/jquery-ui.css" rel="stylesheet" type="text/css"/>
+<link rel="stylesheet" href="http://code.jquery.com/ui/1.10.3/themes/smoothness/jquery-ui.css" />
 <script type="text/javascript" src="js/jquery.min.js"></script>
-<script src="js/jquery-ui.min.js"></script>
+<script src="http://code.jquery.com/ui/1.10.3/jquery-ui.js"></script>
 </head>
 
 <body>
@@ -91,7 +92,7 @@
         </li>
         <li><a href="?page=workedhours"<?php echo $workedhours_active; ?>>Worked Hours</a>
             <ul>
-            	<li><a href="?page=workedhours&task=view">View</a></li>
+            	<li><a href="?page=workedhours&task=view&clearFilter=1">View</a></li>
                 <li><a href="?page=workedhours&task=add">Add</a></li>
             </ul>
         </li>
@@ -191,4 +192,4 @@
   </footer>
   <!-- end .container --></div>
 </body>
-</html>
+</html><?php ob_end_flush(); ?>

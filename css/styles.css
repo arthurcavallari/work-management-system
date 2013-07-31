@@ -220,11 +220,11 @@ header, section, footer, aside, nav, article, figure {
 {
 	font-family: "Lucida Sans Unicode", "Lucida Grande", Sans-Serif;
 	font-size: 12px;
-	margin-left: 15px;
-	margin-right: 15px;
 	margin-top: 10px;
 	margin-bottom: 10px;
-	width: 98%;
+	width: 90%;
+	margin-left: auto;
+	margin-right:auto;
 	text-align: left;
 	border-collapse: collapse;
 }
@@ -252,9 +252,44 @@ header, section, footer, aside, nav, article, figure {
 	color: #000;
 }
 
+.box-table-class
+{
+	font-family: "Lucida Sans Unicode", "Lucida Grande", Sans-Serif;
+	font-size: 12px;
+	margin-left: 15px;
+	margin-right: 15px;
+	margin-top: 10px;
+	margin-bottom: 10px;
+	text-align: left;
+	border-collapse: collapse;
+}
+.box-table-class th
+{
+	font-size: 13px;
+	font-weight: normal;
+	padding: 8px;
+	background: #AfB96E; /*#b9c9fe;*/
+	border-top: 4px solid #a8b86E; /*#aabcfe;*/
+	border-bottom: 1px solid #fff;
+	color: #000;
+}
+.box-table-class td
+{
+	padding: 8px;
+	background: #D8E4BE; /*#e8edff;C6D580 */
+	border-bottom: 1px solid #fff;
+	color: #000;
+	border-top: 1px solid transparent;
+}
+.box-table-class tr:hover td
+{
+	background: #C6D580; /*#d0dafd;*/
+	color: #000;
+}
+
 .myform{
 margin:0 auto;
-width:1200px;
+width:90%;
 padding:14px;
 }
 

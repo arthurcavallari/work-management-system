@@ -1,2 +1,7 @@
-# Work Management System - WMS
-## Manage your employers, hours and payments!
+# Work Management System
+
+Feature list:
+
+ * Add employers and job details (Rates, etc)
+ * Manage shifts+hours
+ * Manage payments
